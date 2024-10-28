@@ -1,0 +1,87 @@
+# Project: VisuEngine
+# Author: Alan Fu
+# Email: alan335411@gmail.com
+# First Edition: 09/27/2024
+# Second Edition: 09/30/2024
+# Third Edition: 10/05/2024
+# Instruction: Please install "pip install numpy-stl" "pip install -U matplotlib" "pip install opencv-python"
+# You are encouraged to personalize the video output depending on the usage of the video
+
+# Import libaries
+from tkinter import Tk, filedialog
+import numpy as np
+from stl import mesh
+from matplotlib import pyplot
+from mpl_toolkits import mplot3d
+import cv2
+
+# Function for opening a file dialog
+def open_file():
+
+    root = Tk()
+    root.withdraw()
+    file_path = filedialog.askopenfilename(title="Please select the STL file", filetypes=[("STL files", "*.stl")])
+    return file_path
+
+# Ask the user to select the file
+file_path = open_file()
+
+# Load the STL file
+if file_path:
+
+    try:
+        your_mesh = mesh.Mesh.from_file(file_path)
+        print(f"Successfully loaded the STL file: {file_path}")
+
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+
+    except Exception as e:
+        print(f"An error occurred while loading the file: {e}")
+
+else:
+    print("No file selected.")
+
+# Create a new plot
+fig = pyplot.figure(figsize=(6.4, 4.8), dpi=100)
+ax = fig.add_subplot(projection='3d')
+
+# Function to plot the STL model
+def plot_stl(ax, your_mesh):
+
+    ax.clear()
+    ax.axis('off')
+    mesh_collection = mplot3d.art3d.Poly3DCollection(your_mesh.vectors, linewidths=0.1, alpha=.25) # Adjust the model
+    edge_collection = mplot3d.art3d.Poly3DCollection(your_mesh.vectors, edgecolors='white', linewidths=0.01, alpha=1) # Adjust the outline
+    ax.add_collection3d(mesh_collection)
+    ax.add_collection3d(edge_collection)
+    scale = your_mesh.points.flatten()
+    ax.auto_scale_xyz(scale, scale, scale)
+
+# Set up the video writer
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+video = cv2.VideoWriter('output.mp4', fourcc, 10, (640, 480)) # Adjust the fps of the output
+print("Video in progress!")
+
+# Rotate the model and capture frames
+for angle in range(0, 360, 10):
+
+    ax.view_init(elev=10, azim=angle)
+    plot_stl(ax, your_mesh)
+    
+    # Save the plot to a buffer
+    fig.canvas.draw()
+    img = np.array(fig.canvas.renderer.buffer_rgba())
+    img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+
+    # Resize the image to 640x480 for the video
+    img_cv_resized = cv2.resize(img, (640, 480))
+    video.write(img_cv_resized)
+
+    print(f"{round(angle/3.6)}%")
+
+# Release the video writer and close the plot
+video.release()
+pyplot.close(fig)
+
+print("Video saved as output.mp4")
